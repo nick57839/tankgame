@@ -21,7 +21,7 @@ public class Bullet {
         yPosi = y;
         direction = dir;
         stop = false;
-        bulletImg = new ImageIcon("images/bullet.PNG").getImage();
+        bulletImg = new ImageIcon("images/bullet.png").getImage();
         bulletBuffImage = new BufferedImage(
                 bulletImg.getWidth(null),
                 bulletImg.getHeight(null),

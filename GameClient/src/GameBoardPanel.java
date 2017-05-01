@@ -32,7 +32,7 @@ public class GameBoardPanel extends JPanel {
         
         g.setColor(Color.GREEN);
         g.fillRect(70, 50, getWidth() - 100, getHeight());
-//        g.drawImage(new ImageIcon("images/bg.JPG").getImage(), 70, 50, null);
+//        g.drawImage(new ImageIcon("images/background.jpg").getImage(), 70, 50, null);
         g.setColor(Color.BLUE);
         g.setFont(new Font("Comic Sans MS", Font.BOLD, 25));
         g.drawString("2D Tank Game", 255, 30);

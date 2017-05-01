@@ -40,7 +40,7 @@ public class Tank {
     public void loadImage(int a) {
         tankImg = new Image[4];
         for(int i = a; i < tankImg.length + a; i++) {
-            tankImg[i-a]=new ImageIcon("images/" + i + ".PNG").getImage();
+            tankImg[i-a]=new ImageIcon("images/" + i + ".png").getImage();
         }
         ImageBuff = new BufferedImage(
                 tankImg[direction - 1].getWidth(null),
