@@ -73,13 +73,13 @@ public class Bullet {
         return false;
     }
 
-    public void startBombThread(boolean chekCollision) {
-        new BombShotThread(chekCollision).start();
+    public void startBulletThread(boolean chekCollision) {
+        new BulletThread(chekCollision).start();
     }
     
-    private class BombShotThread extends Thread {
+    private class BulletThread extends Thread {
         boolean checkCollis;
-        public BombShotThread(boolean chCollision) {
+        public BulletThread(boolean chCollision) {
             checkCollis = chCollision;
         }
         public void run() {

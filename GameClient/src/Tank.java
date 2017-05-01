@@ -8,9 +8,9 @@ import javax.swing.ImageIcon;
 public class Tank {
     
     private Image[] tankImg;
-    private BufferedImage ImageBuff;
-    private Bullet bullet[] = new Bullet[100];
-    private int curBomb = 0;
+    private BufferedImage imageBuff;
+    private Bullet bullet[] = new Bullet[1000];
+    private int curBullet = 0;
     private int tankID;
     private int posiX = -1, posiY = -1;
     private int direction = 1;
@@ -40,18 +40,18 @@ public class Tank {
     public void loadImage(int a) {
         tankImg = new Image[4];
         for(int i = a; i < tankImg.length + a; i++) {
-            tankImg[i-a]=new ImageIcon("images/" + i + ".png").getImage();
+            tankImg[i - a] = new ImageIcon("images/" + i + ".png").getImage();
         }
-        ImageBuff = new BufferedImage(
+        imageBuff = new BufferedImage(
                 tankImg[direction - 1].getWidth(null),
                 tankImg[direction - 1].getHeight(null),
                 BufferedImage.TYPE_INT_RGB
         );
-        ImageBuff.createGraphics().drawImage(tankImg[direction - 1], 0, 0, null);
+        imageBuff.createGraphics().drawImage(tankImg[direction - 1], 0, 0, null);
     }
 
     public BufferedImage getBuffImage() {
-        return ImageBuff;
+        return imageBuff;
     }
     public int getXposition() {
         return posiX;
@@ -68,12 +68,12 @@ public class Tank {
 
     public void moveLeft() {
         if (direction == 1 | direction == 3) {
-           ImageBuff = new BufferedImage(
+           imageBuff = new BufferedImage(
                    tankImg[3].getWidth(null),
                    tankImg[3].getHeight(null),
                    BufferedImage.TYPE_INT_RGB
            );
-           ImageBuff.createGraphics().drawImage(tankImg[3],0,0,null);
+           imageBuff.createGraphics().drawImage(tankImg[3],0,0,null);
            direction = 4;
         }
         else {
@@ -89,12 +89,12 @@ public class Tank {
 
     public void moveRight() {
         if( direction == 1 | direction == 3) {
-           ImageBuff = new BufferedImage(
+           imageBuff = new BufferedImage(
                    tankImg[1].getWidth(null),
                    tankImg[1].getHeight(null),
                    BufferedImage.TYPE_INT_RGB
            );
-           ImageBuff.createGraphics().drawImage(tankImg[1],0,0,null);
+           imageBuff.createGraphics().drawImage(tankImg[1],0,0,null);
            direction = 2;
         }
         else {
@@ -110,12 +110,12 @@ public class Tank {
 
     public void moveForward() {
         if(direction == 2 | direction == 4) {
-           ImageBuff = new BufferedImage(
+           imageBuff = new BufferedImage(
                    tankImg[0].getWidth(null),
                    tankImg[0].getHeight(null),
                    BufferedImage.TYPE_INT_RGB
            );
-           ImageBuff.createGraphics().drawImage(tankImg[0],0,0,null);
+           imageBuff.createGraphics().drawImage(tankImg[0],0,0,null);
            direction = 1;
         }
         else {
@@ -124,36 +124,36 @@ public class Tank {
                 posiY = 50;
             }
             else if(!checkCollision(posiX, temp)) {
-                posiY=temp;
+                posiY = temp;
             }
         }
     }
 
     public void moveBackward() {
         if(direction == 2 | direction == 4) {
-           ImageBuff = new BufferedImage(
+           imageBuff = new BufferedImage(
                    tankImg[2].getWidth(null),
                    tankImg[2].getHeight(null),
                    BufferedImage.TYPE_INT_RGB
            );
-           ImageBuff.createGraphics().drawImage(tankImg[2], 0, 0, null);
+           imageBuff.createGraphics().drawImage(tankImg[2], 0, 0, null);
            direction = 3;
         }
         else {
             int temp = (int)(posiY + velocityY * posiY);
             if(!checkCollision(posiX, temp) && temp > height + 7) {
-              posiY = height + 7;
+                posiY = height + 7;
             }
             else if(!checkCollision(posiX, temp)) {
-                posiY=temp;
+                posiY = temp;
             } 
         }
     }
     
     public void shot() {
-        bullet[curBomb] = new Bullet(this.getXposition(), this.getYposition(), direction);
-        bullet[curBomb].startBombThread(true);
-        curBomb++;
+        bullet[curBullet] = new Bullet(this.getXposition(), this.getYposition(), direction);
+        bullet[curBullet].startBulletThread(true);
+        curBullet++;
     }
 
     public Bullet[] getBullet()
@@ -170,19 +170,19 @@ public class Tank {
     }
 
     public void setDirection(int dir) {
-        ImageBuff = new BufferedImage(
+        imageBuff = new BufferedImage(
                 tankImg[dir - 1].getWidth(null),
                 tankImg[dir - 1].getHeight(null),
                 BufferedImage.TYPE_INT_RGB
         );
-        ImageBuff.createGraphics().drawImage(tankImg[dir - 1],0,0,null);
+        imageBuff.createGraphics().drawImage(tankImg[dir - 1],0,0,null);
         direction = dir;
     }
 
     public void Shot() {
-        bullet[curBomb] = new Bullet(this.getXposition(), this.getYposition(), direction);
-        bullet[curBomb].startBombThread(false);
-        curBomb++;
+        bullet[curBullet] = new Bullet(this.getXposition(), this.getYposition(), direction);
+        bullet[curBullet].startBulletThread(false);
+        curBullet++;
     }
 
     public boolean checkCollision(int xP, int yP) {
