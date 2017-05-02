@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -48,14 +49,27 @@ public class GameBoardPanel extends JPanel {
         g.drawString("2D Tank Game", 255, 30);
         if (gameStatus) {
             try {
-                for(RemoteTank tank : game.getTanks(theTank).values()) {
+                Image[] enemy = new Image[4];
+                for (int i = 0; i < enemy.length; i++)
+                    enemy[i] = new ImageIcon("images/" + i + ".png").getImage();
+                for (RemoteTank tank : game.getTanks(theTank).values()) {
                     if(tank != null) {
-                        g.drawImage(tank.getSerialImage().getBufferedImage(), tank.getXposition(), tank.getYposition(), this);
-                        for (RemoteBullet bullet : game.getBullets()) {
-                            if (bullet != null && !bullet.isStopped())
-                                g.drawImage(bullet.getSerialImage().getBufferedImage(), bullet.getPosiX(), bullet.getPosiY(),this);
+                        if (tank.tankID() != theTank.tankID()) {
+                            BufferedImage imageBuff = new BufferedImage(
+                                    enemy[tank.getDirection() - 1].getWidth(null),
+                                    enemy[tank.getDirection() - 1].getHeight(null),
+                                    BufferedImage.TYPE_INT_RGB
+                            );
+                            imageBuff.createGraphics().drawImage(enemy[tank.getDirection() - 1], 0, 0, null);
+                            g.drawImage(imageBuff, tank.getXposition(), tank.getYposition(), this);
                         }
+                        else
+                            g.drawImage(tank.getSerialImage().getBufferedImage(), tank.getXposition(), tank.getYposition(), this);
                     }
+                }
+                for (RemoteBullet bullet : game.getBullets()) {
+                    if (bullet != null && !bullet.isStopped())
+                        g.drawImage(bullet.getSerialImage().getBufferedImage(), bullet.getPosiX(), bullet.getPosiY(),this);
                 }
             } catch (RemoteException e) {
                 e.printStackTrace();

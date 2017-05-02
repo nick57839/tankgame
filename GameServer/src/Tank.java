@@ -2,9 +2,6 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
@@ -18,6 +15,7 @@ public class Tank extends UnicastRemoteObject implements RemoteTank {
     private int posiX = -1, posiY = -1;
     private int direction = 1;
     private int score = 0;
+    private boolean alive = true;
     private final float velocityX = 0.03125f, velocityY = 0.03125f;
     private final int width = 559, height = 473;
 //    private ClientGUI clientGUI;
@@ -77,8 +75,14 @@ public class Tank extends UnicastRemoteObject implements RemoteTank {
         score += s;
 //        clientGUI.setScore(s);
     }
-    public synchronized int getScore() {
+    public synchronized int getScore() throws RemoteException {
         return score;
+    }
+    public synchronized void setAlive(boolean a) {
+        alive = a;
+    }
+    public synchronized boolean isAlive() throws RemoteException {
+        return alive;
     }
 //    public Bullet[] getBullet() throws RemoteException  {
 //        return bullet;

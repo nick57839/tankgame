@@ -47,6 +47,7 @@ public final class Gameboard extends UnicastRemoteObject implements Game {
     }
 
     public void removeTank(int number) throws RemoteException {
+        tanks.get(number).setAlive(false);
         tanks.remove(number);
     }
 

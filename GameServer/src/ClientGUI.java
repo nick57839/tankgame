@@ -67,7 +67,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         scoreLabel = new JLabel("Score: 0");
         scoreLabel.setBounds(5, 90, 100, 25);
         
-        ipaddressText = new JTextField("pacdemo.me");
+        ipaddressText = new JTextField("107.170.24.85");
         ipaddressText.setBounds(90, 25, 100, 25);
         
         portText = new JTextField("1091");
@@ -92,7 +92,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         
         getContentPane().add(registerPanel);        
         getContentPane().add(gameStatusPanel);
-        getContentPane().add(boardPanel);        
+        getContentPane().add(boardPanel);
         setVisible(true);
     }
     
@@ -101,7 +101,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     }
     
     public void setScore(int scoreParamater) {
-        score += scoreParamater;
+        score = scoreParamater;
         scoreLabel.setText("Score : " + score);
     }
     
@@ -115,9 +115,11 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                 boardPanel.setTank(clientTank);
                 boardPanel.setGameStatus(true);
                 boardPanel.repaint();
+                new ClientUpdateThread().start();
                 registerButton.setFocusable(false);
                 boardPanel.setFocusable(true);
             } catch (IOException ex) {
+                ex.printStackTrace();
                 JOptionPane.showMessageDialog(
                         this,
                         "The Server is not running, try again later!",
@@ -132,12 +134,55 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     public void windowOpened(WindowEvent e) {}
     public void windowClosing(WindowEvent e) {
         // int response=JOptionPane.showConfirmDialog(this,"Are you sure you want to exit ?","Tanks 2D Multiplayer Game!",JOptionPane.YES_NO_OPTION);
+        try {
+            if (clientTank != null)
+                game.removeTank(clientTank.tankID());
+        } catch (RemoteException e1) {
+            e1.printStackTrace();
+        }
     }
     public void windowClosed(WindowEvent e) {}
     public void windowIconified(WindowEvent e) {}
     public void windowDeiconified(WindowEvent e) {}
     public void windowActivated(WindowEvent e) {}
     public void windowDeactivated(WindowEvent e) {}
+
+    public class ClientUpdateThread extends Thread {
+
+        public ClientUpdateThread() {}
+
+        public void run() {
+            while (isRunning) {
+                try {
+                    if (clientTank != null) {
+                        if (clientTank.getScore() != score) {
+                            score = clientTank.getScore();
+                            gameStatusPanel.repaint();
+                        }
+                        if (!clientTank.isAlive()) {
+                            int response = JOptionPane.showConfirmDialog(
+                                    null,
+                                    "Sorry, You lost. Do you want to try again?",
+                                    "2D Tank Game",
+                                    JOptionPane.OK_CANCEL_OPTION
+                            );
+                            if (response == JOptionPane.OK_OPTION) {
+                                setVisible(false);
+                                dispose();
+                                clientTank = null;
+                                new ClientGUI();
+                            } else {
+                                System.exit(0);
+                            }
+                        }
+                    }
+                    Thread.sleep(200);
+                } catch (RemoteException | NotBoundException | MalformedURLException | InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
 
     public static void main(String args[]) throws IOException {
         try {

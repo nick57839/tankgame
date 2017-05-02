@@ -15,4 +15,6 @@ public interface RemoteTank extends java.rmi.Remote {
   SerialImage getSerialImage() throws RemoteException;
   int getXposition() throws RemoteException;
   int getYposition() throws RemoteException;
+  boolean isAlive() throws RemoteException;
+  int getScore() throws RemoteException;
 }

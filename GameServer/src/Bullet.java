@@ -71,7 +71,9 @@ public class Bullet extends UnicastRemoteObject implements RemoteBullet{
                     x = tank.getXposition();
                     y = tank.getYposition();
 
-                    if ((yPosi >= y && yPosi <= y + 43) && (xPosi >= x && xPosi <= x + 43)) {
+                    if (tank.tankID() != theTank.tankID()
+                            && (yPosi >= y && yPosi <= y + 43)
+                            && (xPosi >= x && xPosi <= x + 43)) {
                         theTank.setScore(100);
 //                        theTank.getClientGUI().repaint();
                         try {
