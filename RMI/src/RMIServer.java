@@ -21,10 +21,9 @@ public class RMIServer {
         if (registry != null)
             throw new IllegalStateException("server already running");
         Registry reg = LocateRegistry.createRegistry(1091);
-
-//    reg.rebind(bank.name, bank);
-        String bindLocation = "rmi://0.0.0.0:1091/" + RMIServer.GAME_NAME;
-        Naming.bind(bindLocation, game);
+//        reg.rebind(GAME_NAME, game);
+        String bindLocation = "rmi://107.170.24.85:1091/" + RMIServer.GAME_NAME;
+        Naming.rebind(bindLocation, game);
         registry = reg;
         return 1091;
     }
@@ -56,6 +55,8 @@ public class RMIServer {
             else
                 System.err.println("cannot start server: " + e.getMessage());
             UnicastRemoteObject.unexportObject(gameboard, false);
+        } catch (AlreadyBoundException e) {
+            e.printStackTrace();
         }
         Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
     }

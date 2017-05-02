@@ -18,7 +18,6 @@ public class Tank extends UnicastRemoteObject implements RemoteTank {
     private boolean alive = true;
     private final float velocityX = 0.03125f, velocityY = 0.03125f;
     private final int width = 559, height = 473;
-//    private ClientGUI clientGUI;
     private final Gameboard gameboard;
 
     public Tank(int tid, Gameboard g) throws RemoteException {
@@ -84,15 +83,6 @@ public class Tank extends UnicastRemoteObject implements RemoteTank {
     public synchronized boolean isAlive() throws RemoteException {
         return alive;
     }
-//    public Bullet[] getBullet() throws RemoteException  {
-//        return bullet;
-//    }
-//    public synchronized void setClientGUI( ClientGUI c) {
-//        clientGUI = c;
-//    }
-//    public synchronized ClientGUI getClientGUI() {
-//        return clientGUI;
-//    }
     public Gameboard getGameboard() {
         return gameboard;
     }
@@ -100,7 +90,7 @@ public class Tank extends UnicastRemoteObject implements RemoteTank {
     private boolean checkCollision(int xP, int yP) {
         try {
             for (Tank tank : gameboard.getTanks(this).values()) {
-                if (tank != null) {
+                if (tank != null && tank.tankID() != tankID) {
                     int x = tank.getXposition();
                     int y = tank.getYposition();
                     if (direction == 1)

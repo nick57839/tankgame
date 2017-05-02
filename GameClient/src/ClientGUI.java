@@ -68,7 +68,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         scoreLabel = new JLabel("Score: 0");
         scoreLabel.setBounds(5, 90, 100, 25);
         
-        ipaddressText = new JTextField("pacdemo.me");
+        ipaddressText = new JTextField("107.170.24.85");
         ipaddressText.setBounds(90, 25, 100, 25);
         
         portText = new JTextField("11111");
@@ -239,5 +239,9 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                 ex.printStackTrace();
             }
         }
+    }
+
+    public static void main(String args[]) throws IOException {
+        new ClientGUI();
     }
 }

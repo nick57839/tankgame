@@ -8,6 +8,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.Socket;
+import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 
@@ -86,8 +87,10 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
        
         gameStatusPanel.add(scoreLabel);
 
-        String service = "//localhost:1091/TankGame";
-        game = (Game) java.rmi.Naming.lookup(service);
+        String service = "//107.170.24.85:1091/TankGame";
+//        String service = "//localhost:1091/TankGame";
+        game = (Game) Naming.lookup(service);
+//        System.out.println(game.toString());
         boardPanel = new GameBoardPanel(clientTank, game, false);
         
         getContentPane().add(registerPanel);        
@@ -157,6 +160,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                     if (clientTank != null) {
                         if (clientTank.getScore() != score) {
                             score = clientTank.getScore();
+                            scoreLabel.setText("Score : " + score);
                             gameStatusPanel.repaint();
                         }
                         if (!clientTank.isAlive()) {
