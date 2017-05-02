@@ -1,14 +1,21 @@
-import java.awt.Image;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.Serializable;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
-import javax.swing.ImageIcon;
+import java.util.Map;
+
 /**
  * Bullet.java
  */
-public class Bullet {
+public class Bullet extends UnicastRemoteObject implements RemoteBullet{
 
-    private Image bulletImg;
-    private BufferedImage bulletBuffImage;
+    private final Image bulletImg;
+    private final BufferedImage bulletBuffImage;
+    private SerialImage serialImage;
+    private final Tank theTank;
     
     private int xPosi;
     private int yPosi;
@@ -16,10 +23,11 @@ public class Bullet {
     public boolean stop = false;
     private float velocityX = 0.05f, velocityY = 0.05f;
     
-    public Bullet(int x, int y, int dir) {
+    public Bullet(int x, int y, int dir, Tank t) throws RemoteException {
         xPosi = x;
         yPosi = y;
         direction = dir;
+        theTank = t;
         stop = false;
         bulletImg = new ImageIcon("images/bullet.png").getImage();
         bulletBuffImage = new BufferedImage(
@@ -30,45 +38,54 @@ public class Bullet {
         bulletBuffImage.createGraphics().drawImage(bulletImg, 0, 0, null);
     }
 
-    public int getPosiX() {
+    public synchronized int getPosiX() throws RemoteException {
         return xPosi;
     }
-    public int getPosiY() {
+    public synchronized int getPosiY() throws RemoteException {
         return yPosi;
     }
-    public void setPosiX(int x) {
+    public synchronized void setPosiX(int x) {
         xPosi=x;
     }
-    public void setPosiY(int y) {
+    public synchronized void setPosiY(int y) {
         yPosi=y;
     }
-    public BufferedImage getBulletBuffImg() {
+    public synchronized BufferedImage getBulletBuffImg() {
         return bulletBuffImage;
+    }
+    public synchronized SerialImage getSerialImage() throws RemoteException {
+        serialImage = new SerialImage(bulletBuffImage);
+        return serialImage;
+    }
+    public synchronized boolean isStopped() throws RemoteException {
+        return stop;
     }
     
     public boolean checkCollision() {
-        ArrayList<Tank> clientTanks = GameBoardPanel.getClients();
-        int x, y;
-        for (int i = 1; i < clientTanks.size(); i++) {
-            if (clientTanks.get(i) != null) {
-                x = clientTanks.get(i).getXposition();
-                y = clientTanks.get(i).getYposition();
-                
-                if ((yPosi >= y && yPosi <= y + 43) && (xPosi >= x && xPosi <= x + 43)) {
-                    ClientGUI.setScore(100);
-                    ClientGUI.gameStatusPanel.repaint();
-                    try {
-                        Thread.sleep(200);
-                    } catch (InterruptedException ex) {
-                        ex.printStackTrace();
+        Map<Integer, Tank> clientTanks = null;
+        try {
+            clientTanks = theTank.getGameboard().getTanks(theTank);
+            int x, y;
+            for (Tank tank : clientTanks.values()) {
+                if (tank != null) {
+                    x = tank.getXposition();
+                    y = tank.getYposition();
+
+                    if ((yPosi >= y && yPosi <= y + 43) && (xPosi >= x && xPosi <= x + 43)) {
+                        theTank.setScore(100);
+//                        theTank.getClientGUI().repaint();
+                        try {
+                            Thread.sleep(200);
+                        } catch (InterruptedException ex) {
+                            ex.printStackTrace();
+                        }
+                        theTank.getGameboard().removeTank(tank.tankID());
+                        return true;
                     }
-                    if(clientTanks.get(i)!=null)
-                        Client.getGameClient().sendToServer(
-                                new Protocol().RemoveClientPacket(clientTanks.get(i).getTankID())
-                        );
-                    return true;
                 }
             }
+        } catch (RemoteException e) {
+            e.printStackTrace();
         }
         return false;
     }
