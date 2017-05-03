@@ -39,7 +39,7 @@ public interface GameBoardInterface {
      * @param tid unique identifier of the tanks current location
      * @return bulletID of new bullet
      */
-    int insertBullet(int tid);
+    int insertBullet(Point p, int tid);
 
     /**
      * gets the current consistent board state
