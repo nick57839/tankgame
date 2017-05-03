@@ -1,6 +1,8 @@
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.stream.IntStream;
 
 /**
  * Created by chris on 5/2/17.
@@ -10,6 +12,7 @@ public class GameBoard implements GameBoardInterface {
     public static final int EAST = 1;
     public static final int SOUTH = 2;
     public static final int WEST = 3;
+    public static final boolean debug = true;
 
     private int height, width;
     private AtomicIntegerArray board;
@@ -40,11 +43,12 @@ public class GameBoard implements GameBoardInterface {
         int bVal = board.get(bIndex);
 
         // validate A is a tank and B is empty
-        if (decodeObjectID(aVal) != tid || bVal != 0) return;
+        if (decodeObjectID(aVal) != tid || bVal != 0) { log("failed sanity checks"); return; }
 
         // execute move operations
         if (board.compareAndSet(bIndex, bVal, aVal)) {
             if (board.compareAndSet(aIndex, aVal, 0)) {
+                log("SUCCESS: " + tid);
                 return; // move completed successfully
             } else {
                 // bullet has hit at A, cleanup at B
@@ -77,6 +81,7 @@ public class GameBoard implements GameBoardInterface {
 
             // execute move, check for collisions
             if (bVal == 0) {
+                log("b is clear, moving bullet " + bid);
                 if (board.compareAndSet(bIndex, bVal, aVal)) {
                     if (board.compareAndSet(aIndex, aVal, 0)) break;
                     else {
@@ -145,6 +150,23 @@ public class GameBoard implements GameBoardInterface {
     }
 
     /**
+     * Not thread safe, for debugging and testing purposes
+     * @param x
+     * @param y
+     * @param dir
+     * @return
+     */
+    private int insertTank(int x, int y, int dir) {
+        int tid = idCounter.getAndIncrement();
+        int encoded = encodeState(tid, dir);
+
+        int pIndex = calcIndex(x, y);
+        board.set(pIndex, encoded);
+
+        return tid;
+    }
+
+    /**
      * fires a bullet from the given tankID
      *
      * @param a current location of the tank
@@ -189,7 +211,29 @@ public class GameBoard implements GameBoardInterface {
      */
     @Override
     public int[] readBoardState() {
-        return new int[0];
+        int[] copy;
+        long count, distinctCount;
+        do {
+            // make a copy of board state
+            copy = new int[board.length()];
+            for(int i = 0; i < board.length(); i++) {
+                copy[i] = board.get(i);
+            }
+
+            // check for duplicates which indicates the board is in the middle of a change
+            count = Arrays.stream(copy)
+                    .filter(i -> i != 0)
+                    .map(i -> decodeObjectID(i))
+                    .count();
+
+            distinctCount = Arrays.stream(copy)
+                    .filter(i -> i != 0)
+                    .map(i -> decodeObjectID(i))
+                    .count();
+
+        } while(count != distinctCount);
+
+        return copy;
     }
 
     private int calcIndex(Point p) {
@@ -197,7 +241,7 @@ public class GameBoard implements GameBoardInterface {
     }
 
     private int calcIndex(int x, int y) {
-        return x * (y + 1);
+        return width * x + y;
     }
 
     private int encodeState(int objectID, int dir) {
@@ -216,7 +260,7 @@ public class GameBoard implements GameBoardInterface {
     }
 
     private int randMax(int max) {
-        return ThreadLocalRandom.current().nextInt(0, max+1);
+        return ThreadLocalRandom.current().nextInt(0, max);
     }
 
     /**
@@ -227,16 +271,62 @@ public class GameBoard implements GameBoardInterface {
      */
     private Point inFront(Point p, int dir) {
         switch( dir ) {
-            case NORTH: return new Point(p.x, p.y-1);
-            case SOUTH: return new Point(p.x, p.y+1);
-            case EAST: return new Point(p.x+1, p.y);
-            case WEST: return new Point(p.x-1, p.y);
+            case NORTH: return new Point(p.x-1, p.y);
+            case SOUTH: return new Point(p.x+1, p.y);
+            case EAST: return new Point(p.x, p.y+1);
+            case WEST: return new Point(p.x, p.y-1);
             default: throw new IllegalArgumentException("default case should never be reached");
         }
     }
 
     private boolean outOfBounds(Point p) {
-        if (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height) return false;
-        return true;
+        if (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height) return true;
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        StringBuffer s = new StringBuffer();
+        int[] b = readBoardState();
+
+        s.append(b[0] + " ");
+        for(int i = 1; i < b.length; i++) {
+            if (i % width == 0) s.append("\n");
+            s.append(b[i] + " ");
+        }
+
+        return s.toString();
+    }
+
+    private void log(String s) {
+        if (debug) System.out.println(s);
+    }
+
+    public static void main(String [] args) {
+        GameBoard g = new GameBoard(4, 4);
+        System.out.println(g + "\n");
+
+        Point p1 = new Point(1,1);
+        Point p2 = new Point(2,2);
+        Point p3 = new Point(3,1);
+
+        int t1 = g.insertTank(p1.x, p1.y, 1);
+        int t2 = g.insertTank(p2.x, p2.y, 0);
+        System.out.println(g + "\n");
+
+        g.moveTank(p2, p3, t2);
+        System.out.println(g + "\n");
+
+        int b1 = g.insertBullet(p3, t2);
+        System.out.println(g + "\n");
+
+        g.turnTank(p3, 1, t2);
+        System.out.println(g + "\n");
+
+        g.moveBullet(new Point(2,1), new Point(1,1), b1);
+        System.out.println(g + "\n");
+
+        int b2 = g.insertBullet(p3, t2);
+        System.out.println(g + "\n");
     }
 }
