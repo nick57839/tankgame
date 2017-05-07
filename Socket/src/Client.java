@@ -2,8 +2,9 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+
 /**
- * Client.java
+ * Client class used for sockets.
  */
 public class Client {
 
@@ -19,14 +20,24 @@ public class Client {
         protocol = new Protocol();
     }
 
-    public void register(String Ip, int port, int posX, int posY) throws IOException {
+    /**
+     * Registers a data stream with the server.
+     * @param Ip server ip
+     * @param port server port
+     * @throws IOException possible exception
+     */
+    public void register(String Ip, int port) throws IOException {
         serverPort = port;
         hostName = Ip;
         clientSocket = new Socket(Ip, port);
         writer = new DataOutputStream(clientSocket.getOutputStream());
-        writer.writeUTF(protocol.RegisterPacket(posX, posY));
+        writer.writeUTF(protocol.RegisterPacket());
     }
-  
+
+    /**
+     * Sends a message to the server.
+     * @param message message to be sent to the server
+     */
     public void sendToServer(String message)
     {   
         if (message.equals("exit"))
@@ -48,6 +59,10 @@ public class Client {
         return hostName;
     }
 
+    /**
+     * Creates a game client.
+     * @return returns a new game client
+     */
     public static Client getGameClient() {
         if(client == null)
             try {
@@ -58,6 +73,9 @@ public class Client {
         return client;
     }
 
+    /**
+     * Closes all client connections.
+     */
     public void closeAll() {
         try {
             reader.close(); 

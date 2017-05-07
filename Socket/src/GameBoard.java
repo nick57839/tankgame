@@ -2,10 +2,9 @@ import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.stream.IntStream;
 
 /**
- * Created by chris on 5/2/17.
+ * GameBoard used as shared state of the game.
  */
 public class GameBoard implements GameBoardInterface {
     public static final int NORTH = 0;
@@ -17,13 +16,15 @@ public class GameBoard implements GameBoardInterface {
     private int height, width;
     private AtomicIntegerArray board;
     private int maxID = (int) Math.pow(2, 30);
-    private AtomicInteger idCounter; // TODO: Counter never resets, for long games this will cause problems
+    private AtomicInteger tankIDCounter; // TODO: Counter never resets, for long games this will cause problems
+    private AtomicInteger bulletIDCounter; // TODO: Counter never resets, for long games this will cause problems
 
-    GameBoard(int h, int w) {
+    public GameBoard(int h, int w) {
         height = h;
         width = w;
         board = new AtomicIntegerArray(width * height);
-        idCounter = new AtomicInteger(1);
+        tankIDCounter = new AtomicInteger(1);
+        bulletIDCounter = new AtomicInteger(1);
     }
 
     /**
@@ -35,6 +36,9 @@ public class GameBoard implements GameBoardInterface {
      */
     @Override
     public void moveTank(Point a, Point b, int tid) {
+        // if out of bounds ignore
+        if (outOfBounds(b)) return;
+
         int aIndex = calcIndex(a);
         int bIndex = calcIndex(b);
 
@@ -49,7 +53,7 @@ public class GameBoard implements GameBoardInterface {
         if (board.compareAndSet(bIndex, bVal, aVal)) {
             if (board.compareAndSet(aIndex, aVal, 0)) {
                 log("SUCCESS: " + tid);
-                return; // move completed successfully
+                // move completed successfully
             } else {
                 // bullet has hit at A, cleanup at B
                 board.compareAndSet(bIndex, aVal, 0);
@@ -72,12 +76,23 @@ public class GameBoard implements GameBoardInterface {
         int bIndex = calcIndex(b);
 
         while (true) {
+            // ignore invalid command
+            if (outOfBounds(a)) break;
+
             // read current state
             int aVal = board.get(aIndex);
-            int bVal = board.get(bIndex);
 
             // validate A is the right bullet
-            if (decodeObjectID(aVal) != bid) break;
+            if (-decodeObjectID(-aVal) != bid) break;
+
+            // if bullet moving off board, remove it
+            if (outOfBounds(b)) {
+                board.compareAndSet(aIndex, aVal, 0);
+                break;
+            }
+
+            // needs to come after bounds check
+            int bVal = board.get(bIndex);
 
             // execute move, check for collisions
             if (bVal == 0) {
@@ -89,18 +104,16 @@ public class GameBoard implements GameBoardInterface {
                         board.compareAndSet(bIndex, aVal, 0);
                         break;
                     }
-                } else {
-                    continue; // Something has move into our way, try again
                 }
+                // Something has move into our way, try again
             } else {
                 // destination is a tank or bullet, remove it and our self
                 if (board.compareAndSet(bIndex, bVal, 0)) {
                     // removed B now cleanup our ghost
                     board.compareAndSet(aIndex, aVal, 0);
                     break;
-                } else {
-                    continue; // B has changed, try again
                 }
+                // B has changed, try again
             }
         }
     }
@@ -132,7 +145,7 @@ public class GameBoard implements GameBoardInterface {
      */
     @Override
     public int insertTank() {
-        int tid = idCounter.getAndIncrement();
+        int tid = tankIDCounter.getAndIncrement();
         int encoded = encodeState(tid, 0);
 
         // select a random point on the board and make sure its clear
@@ -151,19 +164,33 @@ public class GameBoard implements GameBoardInterface {
 
     /**
      * Not thread safe, for debugging and testing purposes
-     * @param x
-     * @param y
-     * @param dir
-     * @return
+     * @param x x coordinate to insert the tank at
+     * @param y y coordinate to insert the tank at
+     * @param dir direction to set the tank to initially
+     * @return id of the tank
      */
     private int insertTank(int x, int y, int dir) {
-        int tid = idCounter.getAndIncrement();
+        int tid = tankIDCounter.getAndIncrement();
         int encoded = encodeState(tid, dir);
 
         int pIndex = calcIndex(x, y);
         board.set(pIndex, encoded);
 
         return tid;
+    }
+
+    /**
+     * removes a tank from the board
+     * @param p point where tank is currently at
+     * @param tid unique identifier of the tanks current location
+     */
+    @Override
+    public void removeTank(Point p, int tid) {
+        int tankIndex = calcIndex(p);
+        int aVal = board.get(tankIndex);
+        int tankID = decodeObjectID(aVal);
+        if (tankID != tid) return;
+        board.compareAndSet(tankIndex, aVal, 0);
     }
 
     /**
@@ -184,12 +211,12 @@ public class GameBoard implements GameBoardInterface {
         if (tankID != tid) return 0;
 
         // determine bullet location
-        Point b = inFront(a, tankDirection);
+        Point b = Point.inFront(a, tankDirection);
         if (outOfBounds(b)) return 0;
 
         // create bullet
-        int bid = idCounter.getAndIncrement();
-        int encoded = encodeState(bid, tankDirection);
+        int bid = -bulletIDCounter.getAndIncrement();
+        int encoded = -encodeState(-bid, tankDirection);
         int bulletIndex = calcIndex(b);
 
         do {
@@ -223,12 +250,12 @@ public class GameBoard implements GameBoardInterface {
             // check for duplicates which indicates the board is in the middle of a change
             count = Arrays.stream(copy)
                     .filter(i -> i != 0)
-                    .map(i -> decodeObjectID(i))
+                    .map(GameBoard::decodeObjectID)
                     .count();
 
             distinctCount = Arrays.stream(copy)
                     .filter(i -> i != 0)
-                    .map(i -> decodeObjectID(i))
+                    .map(GameBoard::decodeObjectID)
                     .count();
 
         } while(count != distinctCount);
@@ -241,7 +268,7 @@ public class GameBoard implements GameBoardInterface {
     }
 
     private int calcIndex(int x, int y) {
-        return width * x + y;
+        return x + y * height;
     }
 
     private int encodeState(int objectID, int dir) {
@@ -251,11 +278,11 @@ public class GameBoard implements GameBoardInterface {
         return (objectID << 2) | dir;
     }
 
-    private int decodeObjectID(int state) {
+    public static int decodeObjectID(int state) {
         return state >>> 2;
     }
 
-    private int decodeDirection(int state) {
+    public static int decodeDirection(int state) {
         return state & 3;
     }
 
@@ -263,36 +290,27 @@ public class GameBoard implements GameBoardInterface {
         return ThreadLocalRandom.current().nextInt(0, max);
     }
 
-    /**
-     * Determine the "front" side of an object
-     * @param p current location of the object
-     * @param dir orientation of object
-     * @return A point directly in front of the object
-     */
-    private Point inFront(Point p, int dir) {
-        switch( dir ) {
-            case NORTH: return new Point(p.x-1, p.y);
-            case SOUTH: return new Point(p.x+1, p.y);
-            case EAST: return new Point(p.x, p.y+1);
-            case WEST: return new Point(p.x, p.y-1);
-            default: throw new IllegalArgumentException("default case should never be reached");
-        }
+    private boolean outOfBounds(Point p) {
+        return (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height);
     }
 
-    private boolean outOfBounds(Point p) {
-        if (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height) return true;
-        return false;
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
     }
 
     @Override
     public String toString() {
-        StringBuffer s = new StringBuffer();
+        StringBuilder s = new StringBuilder();
         int[] b = readBoardState();
 
-        s.append(b[0] + " ");
+        s.append(b[0]).append(" ");
         for(int i = 1; i < b.length; i++) {
             if (i % width == 0) s.append("\n");
-            s.append(b[i] + " ");
+            s.append(b[i]).append(" ");
         }
 
         return s.toString();
@@ -317,10 +335,10 @@ public class GameBoard implements GameBoardInterface {
         g.moveTank(p2, p3, t2);
         System.out.println(g + "\n");
 
-        int b1 = g.insertBullet(p3, t2);
+        g.turnTank(p3, 3, t2);
         System.out.println(g + "\n");
 
-        g.turnTank(p3, 1, t2);
+        int b1 = g.insertBullet(p3, t2);
         System.out.println(g + "\n");
 
         g.moveBullet(new Point(2,1), new Point(1,1), b1);

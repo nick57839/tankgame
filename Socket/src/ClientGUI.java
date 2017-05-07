@@ -1,4 +1,5 @@
-import java.awt.Color;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
@@ -6,14 +7,10 @@ import java.awt.event.WindowListener;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.net.Socket;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
+
 /**
- * ClientGUI.java
+ * ClientGUI creates the graphical interface for the client.
+ * Main class of the socket client.
  */
 public class ClientGUI extends JFrame implements ActionListener, WindowListener {
 
@@ -29,7 +26,11 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     private JPanel registerPanel;
     public static JPanel gameStatusPanel;
     private Client client;
-    private Tank clientTank;
+    public static int clientTank;
+    public static int clientXPos;
+    public static int clientYPos;
+    public static int clientDir;
+    public static String gameBoard;
     
     private static int score;
     
@@ -56,7 +57,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         gameStatusPanel = new JPanel();
         gameStatusPanel.setBackground(Color.BLUE);
         gameStatusPanel.setSize(200, 300);
-        gameStatusPanel.setBounds(560, 210, 200, 311);
+        gameStatusPanel.setBounds(560, 210, 200, 347);
         gameStatusPanel.setLayout(null);
      
         ipaddressLabel = new JLabel("IP Address: ");
@@ -68,7 +69,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         scoreLabel = new JLabel("Score: 0");
         scoreLabel.setBounds(5, 90, 100, 25);
         
-        ipaddressText = new JTextField("107.170.24.85");
+//        ipaddressText = new JTextField("107.170.24.85");
+        ipaddressText = new JTextField("localhost");
         ipaddressText.setBounds(90, 25, 100, 25);
         
         portText = new JTextField("11111");
@@ -88,9 +90,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         gameStatusPanel.add(scoreLabel);
             
         client = Client.getGameClient();
-         
-        clientTank = new Tank();
-        boardPanel = new GameBoardPanel(clientTank, client, false);
+
+        boardPanel = new GameBoardPanel(this, client, false);
         
         getContentPane().add(registerPanel);        
         getContentPane().add(gameStatusPanel);
@@ -106,7 +107,11 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         score += scoreParamater;
         scoreLabel.setText("Score : " + score);
     }
-    
+
+    /**
+     * Action listener for the Register button.
+     * @param e action event
+     */
     public void actionPerformed(ActionEvent e) {
         Object obj = e.getSource();
         
@@ -115,9 +120,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
             try {
                 client.register(
                         ipaddressText.getText(),
-                        Integer.parseInt(portText.getText()),
-                        clientTank.getXposition(),
-                        clientTank.getYposition()
+                        Integer.parseInt(portText.getText())
                 );
                 boardPanel.setGameStatus(true);
                 boardPanel.repaint();
@@ -139,14 +142,17 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     public void windowOpened(WindowEvent e) {}
     public void windowClosing(WindowEvent e) {
         // int response=JOptionPane.showConfirmDialog(this,"Are you sure you want to exit ?","Tanks 2D Multiplayer Game!",JOptionPane.YES_NO_OPTION);
-        Client.getGameClient().sendToServer(new Protocol().ExitMessagePacket(clientTank.getTankID()));
+        Client.getGameClient().sendToServer(new Protocol().ExitMessagePacket(clientXPos, clientYPos, clientTank));
     }
     public void windowClosed(WindowEvent e) {}
     public void windowIconified(WindowEvent e) {}
     public void windowDeiconified(WindowEvent e) {}
     public void windowActivated(WindowEvent e) {}
     public void windowDeactivated(WindowEvent e) {}
-    
+
+    /**
+     * Thread class that receives and processes messages sent to the client.
+     */
     public class ClientReceivingThread extends Thread {
         Socket clientSocket;
         DataInputStream reader;
@@ -160,6 +166,9 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
             }
         }
 
+        /**
+         * Process ID, Score, and GameBoard messages.
+         */
         public void run() {
             while (isRunning) {
                 String sentence = "";
@@ -167,69 +176,18 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                     sentence=reader.readUTF();
                 } catch (IOException ex) {
                     ex.printStackTrace();
-                }                
+                }
+//                System.out.println(sentence);
                 if (sentence.startsWith("ID")) {
                     int id = Integer.parseInt(sentence.substring(2));
-                    clientTank.setTankID(id);
-                    System.out.println("My ID= " + id);
+                    clientTank = id;
                 }
-                else if (sentence.startsWith("NewClient")) {
-                    int pos1 = sentence.indexOf(',');
-                    int pos2 = sentence.indexOf('-');
-                    int pos3 = sentence.indexOf('|');
-                    int x = Integer.parseInt(sentence.substring(9, pos1));
-                    int y = Integer.parseInt(sentence.substring(pos1 + 1, pos2));
-                    int dir = Integer.parseInt(sentence.substring(pos2 + 1, pos3));
-                    int id = Integer.parseInt(sentence.substring(pos3 + 1, sentence.length()));
-                    if(id != clientTank.getTankID())
-                        boardPanel.registerNewTank(new Tank(x, y, dir, id));
-                }
-                else if (sentence.startsWith("Update")) {
-                    int pos1 = sentence.indexOf(',');
-                    int pos2 = sentence.indexOf('-');
-                    int pos3 = sentence.indexOf('|');
-                    int x = Integer.parseInt(sentence.substring(6, pos1));
-                    int y = Integer.parseInt(sentence.substring(pos1 + 1, pos2));
-                    int dir = Integer.parseInt(sentence.substring(pos2 + 1, pos3));
-                    int id = Integer.parseInt(sentence.substring(pos3 + 1, sentence.length()));
-                    if(id != clientTank.getTankID()) {
-                        boardPanel.getTank(id).setXpoistion(x);
-                        boardPanel.getTank(id).setYposition(y);
-                        boardPanel.getTank(id).setDirection(dir);
-                        boardPanel.repaint();
-                    }
-                }
-                else if (sentence.startsWith("Shot")) {
+                else if (sentence.startsWith("Score")) {
                     int id = Integer.parseInt(sentence.substring(4));
-                    if (id != clientTank.getTankID())
-                        boardPanel.getTank(id).Shot();
                 }
-                else if (sentence.startsWith("Remove")) {
-                    int id = Integer.parseInt(sentence.substring(6));
-                    if (id == clientTank.getTankID()) {
-                        int response = JOptionPane.showConfirmDialog(
-                                null,
-                                "Sorry, You lost. Do you want to try again?",
-                                "2D Tank Game",
-                                JOptionPane.OK_CANCEL_OPTION
-                        );
-                        if(response == JOptionPane.OK_OPTION) {
-                            //client.closeAll();
-                            setVisible(false);
-                            dispose();
-                            new ClientGUI();
-                        }
-                        else {
-                            System.exit(0);
-                        }
-                    }
-                    else
-                        boardPanel.removeTank(id);
-                }
-                else if (sentence.startsWith("Exit")) {
-                    int id = Integer.parseInt(sentence.substring(4));
-                    if(id != clientTank.getTankID())
-                        boardPanel.removeTank(id);
+                else if (sentence.startsWith("GameBoard")) {
+                    gameBoard = sentence.substring(sentence.indexOf('\n') + 1);
+                    boardPanel.repaint();
                 }
             }
             try {
@@ -238,6 +196,29 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
+        }
+    }
+
+    /**
+     * Command used to signal death of the tank to the client.
+     * Currently not working.
+     */
+    public void death() {
+        isRunning = false;
+        int response = JOptionPane.showConfirmDialog(
+                null,
+                "Sorry, You lost. Do you want to try again?",
+                "2D Tank Game",
+                JOptionPane.OK_CANCEL_OPTION
+        );
+        if(response == JOptionPane.OK_OPTION) {
+            //client.closeAll();
+            setVisible(false);
+            dispose();
+            new ClientGUI();
+        }
+        else {
+            System.exit(0);
         }
     }
 

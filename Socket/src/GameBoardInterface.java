@@ -1,5 +1,5 @@
 /**
- * Created by chris on 5/2/17.
+ * GameBoard shared state interface.
  */
 public interface GameBoardInterface {
     /**
@@ -34,8 +34,15 @@ public interface GameBoardInterface {
     int insertTank();
 
     /**
+     * removes a tank from the board
+     * @param p point where tank is currently at
+     * @param tid unique identifier of the tanks current location
+     */
+    void removeTank(Point p, int tid);
+
+    /**
      * fires a bullet from the given tankID
-     *
+     * @param p point where tank is currently at
      * @param tid unique identifier of the tanks current location
      * @return bulletID of new bullet
      */
