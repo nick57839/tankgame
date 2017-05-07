@@ -19,7 +19,7 @@ public class GameBoardPanel extends JPanel {
     private Image bullet;
     private BufferedImage bulletImage;
     private ClientGUI clientGUI;
-    public GameBoardPanel(ClientGUI cgui, Client client, boolean gameStatus) {
+    public GameBoardPanel(ClientGUI cgui, boolean gameStatus) {
         this.gameStatus = gameStatus;
         clientGUI = cgui;
         setSize(width, height);
@@ -74,7 +74,9 @@ public class GameBoardPanel extends JPanel {
         g.setColor(Color.BLUE);
         g.setFont(new Font("Comic Sans MS", Font.BOLD, 25));
         g.drawString("2D Tank Game", 255, 30);
-        if (gameStatus && ClientGUI.gameBoard != null) {
+        if (gameStatus
+                && ClientGUI.gameBoard != null
+                && ClientGUI.clientTank.getId() != -1) {
             Scanner scanner = new Scanner(ClientGUI.gameBoard);
             boolean alive = false;
             for (int i = 0; i < 12; i++) {
@@ -85,13 +87,13 @@ public class GameBoardPanel extends JPanel {
                         if (space > 0) {
                             int objectID = GameBoard.decodeObjectID(space);
                             int objectDir = GameBoard.decodeDirection(space);
-                            if (objectID != ClientGUI.clientTank) {
+                            if (objectID != ClientGUI.clientTank.getId()) {
                                 g.drawImage(enemyImage[objectDir], 70 + j * 42, 50 + i * 42, this);
                             } else {
                                 g.drawImage(friendlyImage[objectDir], 70 + j * 42, 50 + i * 42, this);
-                                ClientGUI.clientDir = objectDir;
-                                ClientGUI.clientXPos = j;
-                                ClientGUI.clientYPos = i;
+                                ClientGUI.clientTank.setDir(objectDir);
+                                ClientGUI.clientTank.setX(j);
+                                ClientGUI.clientTank.setY(i);
                                 alive = true;
                             }
                         }
@@ -101,9 +103,8 @@ public class GameBoardPanel extends JPanel {
                     }
                 }
             }
-            if (!alive) {
-                clientGUI.death();
-            }
+            if (!alive)
+                clientGUI.isRunning = false;
         }
         repaint();
         if (System.getProperty("os.name").equals("Linux"))

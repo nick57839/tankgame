@@ -26,10 +26,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     private JPanel registerPanel;
     public static JPanel gameStatusPanel;
     private Client client;
-    public static int clientTank;
-    public static int clientXPos;
-    public static int clientYPos;
-    public static int clientDir;
+    public static Tank clientTank;
     public static String gameBoard;
     
     private static int score;
@@ -90,8 +87,9 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         gameStatusPanel.add(scoreLabel);
             
         client = Client.getGameClient();
+        clientTank = new Tank();
 
-        boardPanel = new GameBoardPanel(this, client, false);
+        boardPanel = new GameBoardPanel(this, false);
         
         getContentPane().add(registerPanel);        
         getContentPane().add(gameStatusPanel);
@@ -142,7 +140,13 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     public void windowOpened(WindowEvent e) {}
     public void windowClosing(WindowEvent e) {
         // int response=JOptionPane.showConfirmDialog(this,"Are you sure you want to exit ?","Tanks 2D Multiplayer Game!",JOptionPane.YES_NO_OPTION);
-        Client.getGameClient().sendToServer(new Protocol().ExitMessagePacket(clientXPos, clientYPos, clientTank));
+        Client.getGameClient().sendToServer(
+                new Protocol().ExitMessagePacket(
+                        clientTank.getX(),
+                        clientTank.getY(),
+                        clientTank.getId()
+                )
+        );
     }
     public void windowClosed(WindowEvent e) {}
     public void windowIconified(WindowEvent e) {}
@@ -173,14 +177,14 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
             while (isRunning) {
                 String sentence = "";
                 try {
-                    sentence=reader.readUTF();
+                    sentence = reader.readUTF();
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
 //                System.out.println(sentence);
                 if (sentence.startsWith("ID")) {
                     int id = Integer.parseInt(sentence.substring(2));
-                    clientTank = id;
+                    clientTank.setId(id);
                 }
                 else if (sentence.startsWith("Score")) {
                     int id = Integer.parseInt(sentence.substring(4));
@@ -196,30 +200,50 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
+            death();
         }
     }
 
     /**
      * Command used to signal death of the tank to the client.
-     * Currently not working.
+     * Currently just exits, issue with gamestate messages being delivered after restarting.
      */
     public void death() {
-        isRunning = false;
-        int response = JOptionPane.showConfirmDialog(
-                null,
-                "Sorry, You lost. Do you want to try again?",
+        JOptionPane.showMessageDialog(
+                this,
+                "Sorry, Game Over",
                 "2D Tank Game",
-                JOptionPane.OK_CANCEL_OPTION
+                JOptionPane.INFORMATION_MESSAGE);
+        Client.getGameClient().sendToServer(
+                new Protocol().ExitMessagePacket(
+                        clientTank.getX(),
+                        clientTank.getY(),
+                        clientTank.getId()
+                )
         );
-        if(response == JOptionPane.OK_OPTION) {
-            //client.closeAll();
-            setVisible(false);
-            dispose();
-            new ClientGUI();
-        }
-        else {
-            System.exit(0);
-        }
+        System.exit(0);
+//        int response = JOptionPane.showConfirmDialog(
+//                null,
+//                "Sorry, Game Over. Do you want to play again?",
+//                "2D Tank Game",
+//                JOptionPane.OK_CANCEL_OPTION
+//        );
+//        if(response == JOptionPane.OK_OPTION) {
+//            //client.closeAll();
+//            setVisible(false);
+//            dispose();
+//            new ClientGUI();
+//        }
+//        else {
+//            Client.getGameClient().sendToServer(
+//                    new Protocol().ExitMessagePacket(
+//                            clientTank.getX(),
+//                            clientTank.getY(),
+//                            clientTank.getId()
+//                    )
+//            );
+//            System.exit(0);
+//        }
     }
 
     public static void main(String args[]) throws IOException {

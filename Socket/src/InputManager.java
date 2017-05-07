@@ -12,93 +12,78 @@ public class InputManager implements KeyListener {
     private final int DOWN = 40;
 
     private Client client;
+
     public InputManager() {
         this.client = Client.getGameClient();
     }
 
     /**
      * Helper function used to send message to move tank forward regardless of direction.
-     * @return returns message to be sent to the server.
+     * @return returns message to be sent to the server
      */
     private String moveForward() {
         return new Protocol().MovePacket(
-                ClientGUI.clientXPos,
-                ClientGUI.clientYPos,
-                ClientGUI.clientTank,
-                ClientGUI.clientDir
+                ClientGUI.clientTank.getX(),
+                ClientGUI.clientTank.getY(),
+                ClientGUI.clientTank.getId(),
+                ClientGUI.clientTank.getDir()
+        );
+    }
+
+    /**
+     * Helper function used to send message to turn tank given direction.
+     * @param dir direction to turn the tank
+     * @return returns message to be sent to the server
+     */
+    private String turn(int dir) {
+        return new Protocol().TurnPacket(
+                ClientGUI.clientTank.getX(),
+                ClientGUI.clientTank.getY(),
+                ClientGUI.clientTank.getId(),
+                dir
         );
     }
 
     public void keyTyped(KeyEvent e) {}
     public void keyPressed(KeyEvent e) {
-        if (e.getKeyCode() == LEFT) {
-            if (ClientGUI.clientDir == 0 | ClientGUI.clientDir == 2) {
+        if (ClientGUI.clientTank != null && ClientGUI.clientTank.getId() != -1) {
+            if (e.getKeyCode() == LEFT) {
+                if (ClientGUI.clientTank.getDir() == GameBoard.NORTH
+                        | ClientGUI.clientTank.getDir() == GameBoard.SOUTH) {
+                    client.sendToServer(turn(GameBoard.WEST));
+                } else if (ClientGUI.clientTank.getDir() == GameBoard.WEST) {
+                    client.sendToServer(moveForward());
+                }
+            } else if (e.getKeyCode() == RIGHT) {
+                if (ClientGUI.clientTank.getDir() == GameBoard.NORTH
+                        | ClientGUI.clientTank.getDir() == GameBoard.SOUTH) {
+                    client.sendToServer(turn(GameBoard.EAST));
+                } else if (ClientGUI.clientTank.getDir() == GameBoard.EAST) {
+                    client.sendToServer(moveForward());
+                }
+            } else if (e.getKeyCode() == UP) {
+                if (ClientGUI.clientTank.getDir() == GameBoard.EAST
+                        | ClientGUI.clientTank.getDir() == GameBoard.WEST) {
+                    client.sendToServer(turn(GameBoard.NORTH));
+                } else if (ClientGUI.clientTank.getDir() == GameBoard.NORTH) {
+                    client.sendToServer(moveForward());
+                }
+            } else if (e.getKeyCode() == DOWN) {
+                if (ClientGUI.clientTank.getDir() == GameBoard.EAST
+                        | ClientGUI.clientTank.getDir() == GameBoard.WEST) {
+                    client.sendToServer(turn(GameBoard.SOUTH));
+                } else if (ClientGUI.clientTank.getDir() == GameBoard.SOUTH) {
+                    client.sendToServer(moveForward());
+                }
+            } else if (e.getKeyCode() == KeyEvent.VK_SPACE) {
                 client.sendToServer(
-                        new Protocol().TurnPacket(
-                                ClientGUI.clientXPos,
-                                ClientGUI.clientYPos,
-                                ClientGUI.clientTank,
-                                3
-                        )
-                );
+                        new Protocol().ShotPacket(
+                                ClientGUI.clientTank.getX(),
+                                ClientGUI.clientTank.getY(),
+                                ClientGUI.clientTank.getId(),
+                                ClientGUI.clientTank.getDir()
+                        ));
             }
-            else if (ClientGUI.clientDir == 3) {
-                client.sendToServer(moveForward());
-            }
-        }
-        else if (e.getKeyCode() == RIGHT) {
-            if (ClientGUI.clientDir == 0 | ClientGUI.clientDir == 2) {
-                client.sendToServer(
-                        new Protocol().TurnPacket(
-                                ClientGUI.clientXPos,
-                                ClientGUI.clientYPos,
-                                ClientGUI.clientTank,
-                                1
-                        )
-                );
-            }
-            else if (ClientGUI.clientDir == 1) {
-                client.sendToServer(moveForward());
-            }
-        }
-        else if (e.getKeyCode() == UP) {
-            if (ClientGUI.clientDir == 1 | ClientGUI.clientDir == 3) {
-                client.sendToServer(
-                        new Protocol().TurnPacket(
-                                ClientGUI.clientXPos,
-                                ClientGUI.clientYPos,
-                                ClientGUI.clientTank,
-                                0
-                        )
-                );
-            }
-            else if (ClientGUI.clientDir == 0) {
-                client.sendToServer(moveForward());
-            }
-        }
-        else if (e.getKeyCode() == DOWN) {
-            if (ClientGUI.clientDir == 1 | ClientGUI.clientDir == 3) {
-                client.sendToServer(
-                        new Protocol().TurnPacket(
-                                ClientGUI.clientXPos,
-                                ClientGUI.clientYPos,
-                                ClientGUI.clientTank,
-                                2
-                        )
-                );
-            }
-            else if (ClientGUI.clientDir == 2) {
-                client.sendToServer(moveForward());
-            }
-        }
-        else if(e.getKeyCode() == KeyEvent.VK_SPACE) {
-            client.sendToServer(
-                    new Protocol().ShotPacket(
-                            ClientGUI.clientXPos,
-                            ClientGUI.clientYPos,
-                            ClientGUI.clientTank,
-                            ClientGUI.clientDir
-                    ));
         }
     }
     public void keyReleased(KeyEvent e) {}
