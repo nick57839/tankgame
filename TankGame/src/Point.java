@@ -1,7 +1,12 @@
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+
 /**
  * Point class contains point in gameboard.
  */
-public class Point {
+public class Point implements Serializable {
     public int x, y;
     Point(int x, int y) {
         this.x = x;
@@ -43,5 +48,17 @@ public class Point {
     @Override
     public String toString() {
         return x + " : " + y;
+    }
+
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        out.writeInt(x);
+        out.writeInt(y);
+    }
+
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        x = in.readInt();
+        y = in.readInt();
     }
 }

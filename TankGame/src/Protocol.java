@@ -20,7 +20,7 @@ public class Protocol {
      * @param gameBoard gameboard
      * @return protocol in string form so it can be passed through sockets
      */
-    public String GameStatePacket(GameBoard gameBoard) {
+    public String GameStatePacket(GameBoardInterface gameBoard) {
         return "GameBoard\n" + gameBoard.toString();
     }
 

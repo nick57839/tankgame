@@ -6,7 +6,11 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.Socket;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
 
 /**
  * ClientGUI creates the graphical interface for the client.
@@ -21,7 +25,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     private JTextField ipaddressText;
     private JTextField portText;
     
-    private JButton registerButton;
+    private JButton socketButton;
+    private JButton rmiButton;
     
     private JPanel registerPanel;
     public static JPanel gameStatusPanel;
@@ -34,8 +39,11 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     int width = 790, height = 580;
     boolean isRunning = true;
     private GameBoardPanel boardPanel;
+
+    public static GameBoardInterface game;
+    public static boolean RMI = false;
     
-    public ClientGUI() {
+    public ClientGUI() throws RemoteException, NotBoundException, MalformedURLException {
         score = 0;
         setTitle("2D Tank Game");
         setSize(width, height);
@@ -48,13 +56,13 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         registerPanel = new JPanel();
         registerPanel.setBackground(Color.BLUE);
         registerPanel.setSize(200, 140);
-        registerPanel.setBounds(560, 50, 200, 140);
+        registerPanel.setBounds(560, 50, 200, 240);
         registerPanel.setLayout(null);
         
         gameStatusPanel = new JPanel();
         gameStatusPanel.setBackground(Color.BLUE);
         gameStatusPanel.setSize(200, 300);
-        gameStatusPanel.setBounds(560, 210, 200, 347);
+        gameStatusPanel.setBounds(560, 320, 200, 237);
         gameStatusPanel.setLayout(null);
      
         ipaddressLabel = new JLabel("IP Address: ");
@@ -73,16 +81,22 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         portText = new JTextField("11111");
         portText.setBounds(90, 55, 100, 25);
        
-        registerButton = new JButton("Register");
-        registerButton.setBounds(45, 100, 120, 25);
-        registerButton.addActionListener(this);
-        registerButton.setFocusable(true);
+        socketButton = new JButton("Socket");
+        socketButton.setBounds(45, 120, 120, 25);
+        socketButton.addActionListener(this);
+        socketButton.setFocusable(true);
+
+        rmiButton = new JButton("RMI");
+        rmiButton.setBounds(45, 180, 120, 25);
+        rmiButton.addActionListener(this);
+        rmiButton.setFocusable(true);
 
         registerPanel.add(ipaddressLabel);
         registerPanel.add(portLabel);
         registerPanel.add(ipaddressText);
         registerPanel.add(portText);
-        registerPanel.add(registerButton);
+        registerPanel.add(socketButton);
+        registerPanel.add(rmiButton);
        
         gameStatusPanel.add(scoreLabel);
             
@@ -101,29 +115,31 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         return score;
     }
     
-    public static void setScore(int scoreParamater) {
-        score += scoreParamater;
+    public static void setScore(int scoreParameter) {
+        score += scoreParameter;
         scoreLabel.setText("Score : " + score);
     }
 
     /**
-     * Action listener for the Register button.
+     * Action listener for the register buttons.
      * @param e action event
      */
     public void actionPerformed(ActionEvent e) {
         Object obj = e.getSource();
         
-        if (obj == registerButton) {
-            registerButton.setEnabled(false);
+        if (obj == socketButton) {
+            socketButton.setEnabled(false);
+            rmiButton.setEnabled(false);
             try {
+                RMI = false;
                 client.register(
                         ipaddressText.getText(),
                         Integer.parseInt(portText.getText())
                 );
+                new ClientReceivingThread(client.getSocket()).start();
                 boardPanel.setGameStatus(true);
                 boardPanel.repaint();
-                new ClientReceivingThread(client.getSocket()).start();
-                registerButton.setFocusable(false);
+                socketButton.setFocusable(false);
                 boardPanel.setFocusable(true);
             } catch (IOException ex) {
                 JOptionPane.showMessageDialog(
@@ -132,7 +148,34 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                         "2D Tank Game",
                         JOptionPane.INFORMATION_MESSAGE);
                 System.out.println("The Server is not running!");
-                registerButton.setEnabled(true);
+                socketButton.setEnabled(true);
+                rmiButton.setEnabled(true);
+            }
+        }
+        else if (obj == rmiButton) {
+            socketButton.setEnabled(false);
+            rmiButton.setEnabled(false);
+            try {
+                RMI = true;
+                //String service = "//107.170.24.85:1091/TankGame";
+                String service = "//" + ipaddressText.getText() + ":"
+                        + portText.getText() + "/TankGame";
+                game = (GameBoardInterface) Naming.lookup(service);
+                clientTank.setId(game.insertTank());
+                new ClientUpdateThread().start();
+                boardPanel.setGameStatus(true);
+                boardPanel.repaint();
+                rmiButton.setFocusable(false);
+                boardPanel.setFocusable(true);
+            } catch (IOException | NotBoundException ex) {
+                JOptionPane.showMessageDialog(
+                        this,
+                        "The Server is not running, try again later!",
+                        "2D Tank Game",
+                        JOptionPane.INFORMATION_MESSAGE);
+                System.out.println("The Server is not running!");
+                socketButton.setEnabled(true);
+                rmiButton.setEnabled(true);
             }
         }
     }
@@ -140,13 +183,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     public void windowOpened(WindowEvent e) {}
     public void windowClosing(WindowEvent e) {
         // int response=JOptionPane.showConfirmDialog(this,"Are you sure you want to exit ?","Tanks 2D Multiplayer Game!",JOptionPane.YES_NO_OPTION);
-        Client.getGameClient().sendToServer(
-                new Protocol().ExitMessagePacket(
-                        clientTank.getX(),
-                        clientTank.getY(),
-                        clientTank.getId()
-                )
-        );
+        cleanup();
     }
     public void windowClosed(WindowEvent e) {}
     public void windowIconified(WindowEvent e) {}
@@ -205,6 +242,27 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
     }
 
     /**
+     * Thread class that regularly updates the board for RMI
+     */
+    public class ClientUpdateThread extends Thread {
+
+        /**
+         * Retrieve game state from RMI server.
+         */
+        public void run() {
+            while (isRunning) {
+                try {
+                    Thread.sleep(100);
+                    gameBoard = game.gameState();
+                } catch (InterruptedException | RemoteException e) {
+                    e.printStackTrace();
+                }
+            }
+            death();
+        }
+    }
+
+    /**
      * Command used to signal death of the tank to the client.
      * Currently just exits, issue with gamestate messages being delivered after restarting.
      */
@@ -214,13 +272,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
                 "Sorry, Game Over",
                 "2D Tank Game",
                 JOptionPane.INFORMATION_MESSAGE);
-        Client.getGameClient().sendToServer(
-                new Protocol().ExitMessagePacket(
-                        clientTank.getX(),
-                        clientTank.getY(),
-                        clientTank.getId()
-                )
-        );
+        cleanup();
         System.exit(0);
 //        int response = JOptionPane.showConfirmDialog(
 //                null,
@@ -246,7 +298,33 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
 //        }
     }
 
+    /**
+     * Clean up helper method to make sure tank is gone when client closes
+     */
+    public void cleanup() {
+        if (RMI) {
+            try {
+                game.removeTank(new Point(clientTank.getX(), clientTank.getY()), clientTank.getId());
+            } catch (RemoteException e1) {
+                e1.printStackTrace();
+            }
+        }
+        else {
+            Client.getGameClient().sendToServer(
+                    new Protocol().ExitMessagePacket(
+                            clientTank.getX(),
+                            clientTank.getY(),
+                            clientTank.getId()
+                    )
+            );
+        }
+    }
+
     public static void main(String args[]) throws IOException {
-        new ClientGUI();
+        try {
+            new ClientGUI();
+        } catch (NotBoundException e) {
+            e.printStackTrace();
+        }
     }
 }

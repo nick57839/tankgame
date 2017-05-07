@@ -1,3 +1,5 @@
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -6,7 +8,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 /**
  * GameBoard used as shared state of the game.
  */
-public class GameBoard implements GameBoardInterface {
+public class GameBoard extends UnicastRemoteObject implements GameBoardInterface {
     public static final int NORTH = 0;
     public static final int EAST = 1;
     public static final int SOUTH = 2;
@@ -19,7 +21,7 @@ public class GameBoard implements GameBoardInterface {
     private AtomicInteger tankIDCounter; // TODO: Counter never resets, for long games this will cause problems
     private AtomicInteger bulletIDCounter; // TODO: Counter never resets, for long games this will cause problems
 
-    public GameBoard(int h, int w) {
+    public GameBoard(int h, int w) throws RemoteException {
         height = h;
         width = w;
         board = new AtomicIntegerArray(width * height);
@@ -35,7 +37,7 @@ public class GameBoard implements GameBoardInterface {
      * @param tid Unique identifier for the tank
      */
     @Override
-    public void moveTank(Point a, Point b, int tid) {
+    public void moveTank(Point a, Point b, int tid) throws RemoteException {
         // if out of bounds ignore
         if (outOfBounds(b)) return;
 
@@ -71,7 +73,7 @@ public class GameBoard implements GameBoardInterface {
      * @param bid Unique identifier of bullet
      */
     @Override
-    public void moveBullet(Point a, Point b, int bid) {
+    public void moveBullet(Point a, Point b, int bid) throws RemoteException {
         int aIndex = calcIndex(a);
         int bIndex = calcIndex(b);
 
@@ -126,7 +128,7 @@ public class GameBoard implements GameBoardInterface {
      * @param tid       unique identifier for tank
      */
     @Override
-    public void turnTank(Point a, int direction, int tid) {
+    public void turnTank(Point a, int direction, int tid) throws RemoteException {
         int aIndex = calcIndex(a);
         int encoded = encodeState(tid, direction);
 
@@ -144,7 +146,7 @@ public class GameBoard implements GameBoardInterface {
      *
      */
     @Override
-    public int insertTank() {
+    public int insertTank() throws RemoteException {
         int tid = tankIDCounter.getAndIncrement();
         int encoded = encodeState(tid, 0);
 
@@ -185,7 +187,7 @@ public class GameBoard implements GameBoardInterface {
      * @param tid unique identifier of the tanks current location
      */
     @Override
-    public void removeTank(Point p, int tid) {
+    public void removeTank(Point p, int tid) throws RemoteException {
         int tankIndex = calcIndex(p);
         int aVal = board.get(tankIndex);
         int tankID = decodeObjectID(aVal);
@@ -201,7 +203,7 @@ public class GameBoard implements GameBoardInterface {
      * @return bulletID of new bullet
      */
     @Override
-    public int insertBullet(Point a, int tid) {
+    public int insertBullet(Point a, int tid) throws RemoteException {
         // get tank info
         int tankIndex = calcIndex(a);
         int aVal = board.get(tankIndex);
@@ -223,10 +225,14 @@ public class GameBoard implements GameBoardInterface {
             int bVal = board.get(bulletIndex);
 
             if (bVal == 0) {
-                if (board.compareAndSet(bulletIndex, bVal, encoded)) return bid;
+                if (board.compareAndSet(bulletIndex, bVal, encoded)) {
+                    new Bullet(bid, b, tankDirection, this).start();
+                    return bid;
+                }
             } else {
                 // location is occupied, destroy object
-                if (board.compareAndSet(bulletIndex, bVal, 0)) return 0;
+                if (board.compareAndSet(bulletIndex, bVal, 0))
+                    return 0;
             }
         } while (true);
     }
@@ -237,7 +243,7 @@ public class GameBoard implements GameBoardInterface {
      * @return array of ints representing the current board state
      */
     @Override
-    public int[] readBoardState() {
+    public int[] readBoardState() throws RemoteException {
         int[] copy;
         long count, distinctCount;
         do {
@@ -294,18 +300,44 @@ public class GameBoard implements GameBoardInterface {
         return (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height);
     }
 
-    public int getWidth() {
+    @Override
+    public int getWidth() throws RemoteException {
         return width;
     }
 
-    public int getHeight() {
+    @Override
+    public int getHeight() throws RemoteException {
         return height;
+    }
+
+    @Override
+    public String gameState() {
+        StringBuilder s = new StringBuilder();
+        int[] b = new int[0];
+        try {
+            b = readBoardState();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
+
+        s.append(b[0]).append(" ");
+        for(int i = 1; i < b.length; i++) {
+            if (i % width == 0) s.append("\n");
+            s.append(b[i]).append(" ");
+        }
+
+        return s.toString();
     }
 
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
-        int[] b = readBoardState();
+        int[] b = new int[0];
+        try {
+            b = readBoardState();
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
 
         s.append(b[0]).append(" ");
         for(int i = 1; i < b.length; i++) {
@@ -321,7 +353,12 @@ public class GameBoard implements GameBoardInterface {
     }
 
     public static void main(String [] args) {
-        GameBoard g = new GameBoard(4, 4);
+        GameBoard g = null;
+        try {
+            g = new GameBoard(4, 4);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
 
         Point p1 = new Point(1,1);
@@ -332,19 +369,40 @@ public class GameBoard implements GameBoardInterface {
         int t2 = g.insertTank(p2.x, p2.y, 0);
         System.out.println(g + "\n");
 
-        g.moveTank(p2, p3, t2);
+        try {
+            g.moveTank(p2, p3, t2);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
 
-        g.turnTank(p3, 3, t2);
+        try {
+            g.turnTank(p3, 3, t2);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
 
-        int b1 = g.insertBullet(p3, t2);
+        int b1 = 0;
+        try {
+            b1 = g.insertBullet(p3, t2);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
 
-        g.moveBullet(new Point(2,1), new Point(1,1), b1);
+        try {
+            g.moveBullet(new Point(2,1), new Point(1,1), b1);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
 
-        int b2 = g.insertBullet(p3, t2);
+        try {
+            int b2 = g.insertBullet(p3, t2);
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         System.out.println(g + "\n");
     }
 }

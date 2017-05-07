@@ -1,6 +1,7 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 
 /**
@@ -11,7 +12,7 @@ public class Bullet extends Thread {
     private int id;
     private Point point;
     private int direction;
-    private GameBoard gameBoard;
+    private GameBoardInterface gameBoard;
     private boolean running = true;
 
     /**
@@ -21,7 +22,7 @@ public class Bullet extends Thread {
      * @param dir direction the bullet is traveling
      * @param g reference to the gameboard
      */
-    public Bullet(int id, Point p, int dir, GameBoard g) {
+    public Bullet(int id, Point p, int dir, GameBoardInterface g) {
         this.id = id;
         point = p;
         direction = dir;
@@ -48,13 +49,21 @@ public class Bullet extends Thread {
                 e.printStackTrace();
             }
             Point next = Point.inFront(point, direction);
-            if (next.x <= -2 || next.y <= -2
-                    || next.x >= gameBoard.getWidth() + 2
-                    || next.y >= gameBoard.getHeight() + 2)
-                running = false;
-            else {
-                gameBoard.moveBullet(point, next, id);
-                point = next;
+            try {
+                if (next.x <= -2 || next.y <= -2
+                        || next.x >= gameBoard.getWidth() + 2
+                        || next.y >= gameBoard.getHeight() + 2)
+                    running = false;
+                else {
+                    try {
+                        gameBoard.moveBullet(point, next, id);
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
+                    }
+                    point = next;
+                }
+            } catch (RemoteException e) {
+                e.printStackTrace();
             }
         }
     }
