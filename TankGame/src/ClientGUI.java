@@ -71,8 +71,8 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         portLabel = new JLabel("Port: ");
         portLabel.setBounds(5, 55, 50, 25);
         
-        scoreLabel = new JLabel("Score: 0");
-        scoreLabel.setBounds(5, 90, 100, 25);
+//        scoreLabel = new JLabel("Score: 0");
+//        scoreLabel.setBounds(5, 90, 100, 25);
         
 //        ipaddressText = new JTextField("107.170.24.85");
         ipaddressText = new JTextField("localhost");
@@ -98,7 +98,7 @@ public class ClientGUI extends JFrame implements ActionListener, WindowListener 
         registerPanel.add(socketButton);
         registerPanel.add(rmiButton);
        
-        gameStatusPanel.add(scoreLabel);
+//        gameStatusPanel.add(scoreLabel);
             
         client = Client.getGameClient();
         clientTank = new Tank();

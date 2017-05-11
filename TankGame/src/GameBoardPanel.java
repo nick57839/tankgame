@@ -1,6 +1,9 @@
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -12,11 +15,8 @@ public class GameBoardPanel extends JPanel {
     private int width = 609;
     private int height = 557;
     private boolean gameStatus;
-    private final Image[] friendly;
     private BufferedImage[] friendlyImage;
-    private final Image[] enemy;
     private BufferedImage[] enemyImage;
-    private Image bullet;
     private BufferedImage bulletImage;
     private ClientGUI clientGUI;
     public GameBoardPanel(ClientGUI cgui, boolean gameStatus) {
@@ -26,35 +26,27 @@ public class GameBoardPanel extends JPanel {
         setBounds(-50, 0, width, height);
         addKeyListener(new InputManager());
         setFocusable(true);
-        friendly = new Image[4];
         friendlyImage = new BufferedImage[4];
-        for (int i = 4; i < friendly.length + 4; i++) {
-            friendly[i - 4] = new ImageIcon("images/" + i + ".png").getImage();
-            friendlyImage[i - 4] = new BufferedImage(
-                    friendly[i- 4].getWidth(null),
-                    friendly[i - 4].getHeight(null),
-                    BufferedImage.TYPE_INT_RGB
-            );
-            friendlyImage[i - 4].createGraphics().drawImage(friendly[i - 4], 0, 0, null);
+        for (int i = 4; i < friendlyImage.length + 4; i++) {
+            try {
+                friendlyImage[i - 4] = ImageIO.read(getClass().getResource("/images/" + i + ".png"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        enemy = new Image[4];
         enemyImage = new BufferedImage[4];
-        for (int i = 0; i < enemy.length; i++) {
-            enemy[i] = new ImageIcon("images/" + i + ".png").getImage();
-            enemyImage[i] = new BufferedImage(
-                    enemy[i].getWidth(null),
-                    enemy[i].getHeight(null),
-                    BufferedImage.TYPE_INT_RGB
-            );
-            enemyImage[i].createGraphics().drawImage(enemy[i], 0, 0, null);
+        for (int i = 0; i < enemyImage.length; i++) {
+            try {
+                enemyImage[i] = ImageIO.read(getClass().getResource("/images/" + i + ".png"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
-        bullet = new ImageIcon("images/bullet.png").getImage();
-        bulletImage = new BufferedImage(
-                bullet.getWidth(null),
-                bullet.getHeight(null),
-                BufferedImage.TYPE_INT_RGB
-        );
-        bulletImage.createGraphics().drawImage(bullet, 0, 0, null);
+        try {
+            bulletImage = ImageIO.read(getClass().getResource("/images/bullet.png"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
